@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>RustGIS</title>
+  <link rel="icon" href="https://assets.rustgis.app/images/favicon.png">
+  <!-- Installable as an app (docs/installation.md › Install the web app). -->
+  
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#e4e8ee">
+  <link rel="apple-touch-icon" href="https://assets.rustgis.app/images/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="RustGIS">
+  
+<script type="module">
+import init, * as bindings from '/rustgis-web-b9b0b273a77eb307.js';
+const wasm = await init({ module_or_path: '/rustgis-web-b9b0b273a77eb307_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #e4e8ee; }
+    /* Clear of the notch, rounded corners and home indicator (viewport-fit=cover). */
+    #rustgis_canvas { position: absolute; top: env(safe-area-inset-top, 0px); left: env(safe-area-inset-left, 0px);
+      width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+      height: calc(100% - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); display: block; }
+    #rustgis_loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px; color: #4a5563; font: 14px system-ui, sans-serif; pointer-events: none; }
+    #rustgis_loading img { width: 96px; height: 96px; animation: spin 6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #rustgis_update { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+      display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px; border-radius: 8px; z-index: 10;
+      background: #2b313b; color: #f2f4f7; font: 13px system-ui, sans-serif; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); white-space: nowrap; }
+    #rustgis_update[hidden] { display: none; }
+    #rustgis_update button { font: inherit; padding: 4px 12px; border: 0; border-radius: 6px; background: #e4783d; color: #fff; cursor: pointer; }
+    #rustgis_update button.dismiss { background: transparent; color: #aab2bf; padding: 4px 6px; }
+  </style>
+<link rel="modulepreload" href="/rustgis-web-b9b0b273a77eb307.js" crossorigin="anonymous" integrity="sha384-+p13MyDDSaDEx44OI3B/vUyx2h+1zMB+4HusA/DAihJoepIW3Lb26uFw2W9o1ik1"><link rel="modulepreload" href="/snippets/rustgis-web-78b73f8c13a26ca9/inline0.js" crossorigin="anonymous" integrity="sha384-ClvjitsGyS7HsPRTgjtwRqaWUwYqYBFMOjcxv2VAMOKH8JlMMiFXUMZWcqautnNv"><link rel="preload" href="/rustgis-web-b9b0b273a77eb307_bg.wasm" crossorigin="anonymous" integrity="sha384-ZBBt1P9pTcFeILyel1PctuHtp7jV8GqBBxAGggsuleTxdMpNoyg+85dr+2Jalwqq" as="fetch" type="application/wasm"><script async src="https://www.googletagmanager.com/gtag/js?id=G-WLN6NWSCKV"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  (function () {
+    var page = { page_location: location.origin + location.pathname };
+    try { if (document.referrer) { var r = new URL(document.referrer); page.page_referrer = r.origin + r.pathname; } } catch (e) {}
+    gtag('set', page);
+    gtag('js', new Date());
+    gtag('config', 'G-WLN6NWSCKV', Object.assign({ send_page_view: false }, page));
+    gtag('event', 'page_view', page);
+  })();
+</script>
+</head>
+<body>
+  <canvas id="rustgis_canvas"></canvas>
+  <div id="rustgis_loading"><img src="https://assets.rustgis.app/images/logo.svg" alt=""><div>Loading RustGIS&hellip;</div></div>
+  <div id="rustgis_update" role="status" hidden>
+    <span>A new version of RustGIS is available.</span>
+    <button type="button" class="reload">Reload</button>
+    <button type="button" class="dismiss" aria-label="Dismiss">&times;</button>
+  </div>
+  <script>
+    // The service worker (sw.js, written by `cargo xtask web-pwa` for deployed builds) lets the app
+    // start offline. A new deploy waits until the user reloads from the notice, so the page never
+    // changes under them. The notebook widget (?embed) runs without one.
+    (function () {
+      if (!("serviceWorker" in navigator) || new URLSearchParams(location.search).has("embed")) return;
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("sw.js").then(function (reg) {
+          var note = document.getElementById("rustgis_update");
+          var updating = false;
+          function offer(worker) {
+            // No controller means this is the first install, not an update.
+            if (!worker || !navigator.serviceWorker.controller) return;
+            note.querySelector(".reload").onclick = function () {
+              updating = true;
+              worker.postMessage({ type: "rustgis-update" });
+            };
+            note.querySelector(".dismiss").onclick = function () { note.hidden = true; };
+            note.hidden = false;
+          }
+          offer(reg.waiting);
+          reg.addEventListener("updatefound", function () {
+            var worker = reg.installing;
+            if (worker) worker.addEventListener("statechange", function () { if (worker.state === "installed") offer(worker); });
+          });
+          navigator.serviceWorker.addEventListener("controllerchange", function () {
+            if (updating) location.reload();
+          });
+          // An installed app can stay open for days: look for a new deploy when it comes back into view.
+          document.addEventListener("visibilitychange", function () {
+            if (document.visibilityState === "visible") reg.update().catch(function () {});
+          });
+        }).catch(function () {});
+      });
+    })();
+  </script>
+</body>
+</html>
